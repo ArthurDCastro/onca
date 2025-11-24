@@ -1,6 +1,8 @@
 #ifndef BOARD_H
 #define BOARD_H
 
+#define BOARD_MAX_VERTICES 32  ///< Numero maximo de vertices do tabuleiro
+
 /**
  * @brief Representa o tipo de peca em uma posicao do tabuleiro.
  */
@@ -15,16 +17,15 @@ typedef enum {
  */
 typedef struct {
 	Piece piece;  ///< Peca presente neste vertice
-} VertexState;
-
-#define BOARD_MAX_VERTICES 32  ///< Numero maximo de vertices do tabuleiro
+	Vertex neighbors[BOARD_MAX_VERTICES]
+} Vertex;
 
 /**
  * @brief Representa o estado completo do jogo.
  */
 typedef struct {
-	VertexState v[BOARD_MAX_VERTICES];	///< Vetor de estados dos vertices
-	int num_vertices;					///< Quantidade real de vertices usados
+	Vertex v[BOARD_MAX_VERTICES];  ///< Vetor de estados dos vertices
+	int num_vertices;			   ///< Quantidade real de vertices usados
 
 	int jaguar_pos;	 ///< Indice da posicao da onca
 	int num_dogs;	 ///< Numero de caes no tabuleiro
