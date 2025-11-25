@@ -40,14 +40,9 @@ int graph_init (Graph* g, int n) {
 
 	g->num_vertices = 0;
 
-	/* Estado inicial do tabuleiro */
-	g->jaguar_pos = -1;
-	g->num_dogs = 0;
-	g->to_move = PIECE_JAGUAR; /* default inicial */
-
 	/* Inicializa todos os vertices */
 	for ( int i = 0; i < GRAPH_MAX_VERTICES; i++ ) {
-		g->v[i].piece = PIECE_EMPTY;
+		g->v[i].cell = CELL_EMPTY;
 		g->v[i].c.row = -1;
 		g->v[i].c.col = -1;
 		g->v[i].degree = 0;
@@ -295,7 +290,7 @@ int create_vertice (Graph* g, Map* m, int i, int j, int* vertex_id) {
 	/* cria o vertice */
 	int id = g->num_vertices++;
 
-	g->v[id].piece = PIECE_EMPTY;
+	g->v[id].cell = CELL_EMPTY;
 	g->v[id].c.row = i;
 	g->v[id].c.col = j;
 	g->v[id].degree = 0;
@@ -359,11 +354,15 @@ int explorer (Graph* g, Map* m, int i, int j, int vertex_id) {
 	/* direcoes (dr, dc) e caracteres esperados de aresta nessa direcao */
 	int dr[8] = {0, 0, 1, -1, 1, 1, -1, -1};
 	int dc[8] = {1, -1, 0, 0, 1, -1, 1, -1};
-	char edge[8] = {'-', '-', '|', '|', '/', '\\', '\\', '/'};
+	char edge[8] = {'-', '-', '|', '|', '\\', '/', '/', '\\'};
+	int neighbor_id;
 
 	for ( int dir = 0; dir < 8; dir++ ) {
 		int r = i + dr[dir];
 		int c = j + dc[dir];
+
+		if ( vertex_id == 8 )
+			printf ("i: %d, j: %d, r: %d, c: %d, Data: %c, Edge: %c\n", i, j, r, c, m->data[r][c], edge[dir]);
 
 		/* checa se a primeira posicao na direcao contem o caractere da aresta */
 		if ( r < 0 || r >= m->rows || c < 0 || c >= m->cols )
@@ -381,7 +380,6 @@ int explorer (Graph* g, Map* m, int i, int j, int vertex_id) {
 				break;
 
 			if ( is_vertice (m, r, c) ) {
-				int neighbor_id;
 				int status = create_vertice (g, m, r, c, &neighbor_id);
 
 				if ( status < 0 ) {
@@ -442,6 +440,10 @@ int explorer (Graph* g, Map* m, int i, int j, int vertex_id) {
 			/* se nao eh nem aresta nem vertice, para */
 			if ( m->data[r][c] != edge[dir] )
 				break;
+		}
+
+		if ( vertex_id == 8 ) {
+			printf ("Vertice id: %d, Direcao: %c (%d, %d), vizinho %d.\n", vertex_id, edge[dir], dr[dir], dc[dir], neighbor_id);
 		}
 	}
 
@@ -553,11 +555,81 @@ void print_graph (const Graph* g) {
 
 		printf ("\n");
 	}
+}
 
-	printf ("\n=== Estado das pecas ===\n");
-	printf ("Onca em       : %d\n", g->jaguar_pos);
-	printf ("Numero de caes: %d\n", g->num_dogs);
-	printf ("A jogar       : %s\n",
-			(g->to_move == PIECE_JAGUAR ? "jaguar" : g->to_move == PIECE_DOG ? "caes"
-																			 : "desconhecido"));
+int graph_get_coord (const Graph* g, int vertex_id, int* row, int* col) {
+	if ( !g ) {
+		fprintf (stderr, "graph_get_coord: ponteiro g == NULL\n");
+		return -1;
+	}
+
+	if ( !row || !col ) {
+		fprintf (stderr, "graph_get_coord: ponteiro row/col == NULL\n");
+		return -2;
+	}
+
+	if ( vertex_id < 0 || vertex_id >= g->num_vertices ) {
+		fprintf (stderr,
+				 "graph_get_coord: vertex_id (%d) fora do intervalo [0, %d)\n",
+				 vertex_id, g->num_vertices);
+		return -3;
+	}
+
+	const Vertex* v = &g->v[vertex_id];
+
+	*row = v->c.row;
+	*col = v->c.col;
+
+	return 0;
+}
+
+int graph_get_index (const Graph* g, int row, int col) {
+	if ( !g ) {
+		fprintf (stderr, "graph_get_index: ponteiro g == NULL\n");
+		return -1;
+	}
+
+	if ( row < 0 || col < 0 ) {
+		fprintf (stderr,
+				 "graph_get_index: coordenadas negativas (row=%d, col=%d)\n",
+				 row, col);
+		return -2;
+	}
+
+	/* busca linear nos vertices */
+	for ( int v = 0; v < g->num_vertices; v++ ) {
+		if ( g->v[v].c.row == row &&
+			 g->v[v].c.col == col ) {
+			return v; /* achou */
+		}
+	}
+
+	/* nao encontrado */
+	return -1;
+}
+
+int graph_is_neighbor (const Graph* g, int a, int b) {
+	if ( !g ) {
+		fprintf (stderr, "graph_is_neighbor: ponteiro g == NULL\n");
+		return -1;
+	}
+
+	if ( a < 0 || a >= g->num_vertices ||
+		 b < 0 || b >= g->num_vertices ) {
+		fprintf (stderr,
+				 "graph_is_neighbor: ids fora do intervalo "
+				 "(a=%d, b=%d, num_vertices=%d)\n",
+				 a, b, g->num_vertices);
+		return -2;
+	}
+
+	const Vertex* va = &g->v[a];
+
+	for ( int k = 0; k < va->degree; k++ ) {
+		if ( va->neighbors[k] == b ) {
+			return 1; /* sao vizinhos */
+		}
+	}
+
+	return 0; /* nao sao vizinhos */
 }

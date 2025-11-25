@@ -12,13 +12,13 @@ typedef struct {
 } Coordinate;
 
 typedef enum {
-	PIECE_EMPTY = 0,
-	PIECE_DOG,
-	PIECE_JAGUAR
-} Piece;
+	CELL_EMPTY = 0,
+	CELL_DOG,
+	CELL_JAGUAR
+} CellContent;
 
 typedef struct {
-	Piece piece;
+	CellContent cell;
 	Coordinate c;
 	int neighbors[GRAPH_MAX_NEIGHBORS]; /* IDs dos vizinhos */
 	int degree;							/* numero de vizinhos */
@@ -27,11 +27,6 @@ typedef struct {
 typedef struct {
 	Vertex v[GRAPH_MAX_VERTICES];
 	int num_vertices;
-
-	int jaguar_pos;
-	int num_dogs;
-
-	Piece to_move; /* lado a jogar */
 } Graph;
 
 /* ---------------- Funcoes publicas ---------------- */
@@ -43,5 +38,45 @@ typedef struct {
  * O usuario so precisa chamar esta funcao para ter um grafo pronto.
  */
 int graph_create (Graph* g, const char* map_path);
+
+/**
+ * @brief Retorna a coordenada (linha, coluna) de um vertice.
+ *
+ * Os valores retornados correspondem à posicao do vertice no mapa ASCII
+ * usado na construcao do grafo.
+ *
+ * @param g Ponteiro para o grafo.
+ * @param vertex_id Indice do vertice em g->v[].
+ * @param row Ponteiro para receber a linha.
+ * @param col Ponteiro para receber a coluna.
+ * @return 0 em caso de sucesso, diferente de 0 em erro.
+ */
+int graph_get_coord (const Graph* g, int vertex_id, int* row, int* col);
+
+/**
+ * @brief Retorna o ID do vertice cuja coordenada original é (row, col).
+ *
+ * Esta funcao realiza uma busca linear em g->v[], pois o grafo possui
+ * poucos vertices e essa operacao eh barata.
+ *
+ * @param g Ponteiro para o grafo.
+ * @param row Linha do vertice no mapa ASCII usado na construcao.
+ * @param col Coluna correspondente.
+ * @return ID do vertice (>=0) em caso de sucesso, -1 se nao encontrado.
+ */
+int graph_get_index (const Graph* g, int row, int col);
+
+/**
+ * @brief Verifica se dois vertices sao vizinhos diretos no grafo.
+ *
+ * Um vertice eh vizinho do outro se existir uma aresta entre eles
+ * (isto é: se um aparece na lista de neighbors do outro).
+ *
+ * @param g Ponteiro para o grafo.
+ * @param a ID de um vertice.
+ * @param b ID de outro vertice.
+ * @return 1 se sao vizinhos, 0 se nao sao, <0 em caso de erro.
+ */
+int graph_is_neighbor (const Graph* g, int a, int b);
 
 #endif /* GRAPH_H */

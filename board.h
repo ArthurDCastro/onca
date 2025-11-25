@@ -17,7 +17,7 @@ typedef enum {
  */
 typedef struct {
 	Piece piece;  ///< Peca presente neste vertice
-	Vertex neighbors[BOARD_MAX_VERTICES]
+	Vertex neighbors[BOARD_MAX_VERTICES];
 } Vertex;
 
 /**
