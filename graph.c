@@ -12,6 +12,35 @@ typedef struct {
 } Map;
 
 /**
+ * @brief Inicializa um vertice do grafo.
+ *
+ * Define:
+ *   - coordenadas (row, col)
+ *   - degree = 0
+ *   - neighbors[] = -1
+ *
+ * @param v Ponteiro para o vertice.
+ * @param row Linha no mapa ASCII (ou -1 se ainda desconhecida).
+ * @param col Coluna no mapa ASCII (ou -1 se ainda desconhecida).
+ * @return 0 em caso de sucesso, diferente de 0 em erro.
+ */
+int vertex_init (Vertex* v, int row, int col) {
+	if ( !v ) {
+		fprintf (stderr, "vertex_init: ponteiro v == NULL\n");
+		return -1;
+	}
+
+	v->c.row = row;
+	v->c.col = col;
+	v->degree = 0;
+
+	for ( int k = 0; k < GRAPH_MAX_NEIGHBORS; k++ )
+		v->neighbors[k] = -1;
+
+	return 0;
+}
+
+/**
  * Inicializa a estrutura Graph.
  *
  * Esta funcao zera todos os campos do grafo e define o numero maximo
@@ -41,15 +70,8 @@ int graph_init (Graph* g, int n) {
 	g->num_vertices = 0;
 
 	/* Inicializa todos os vertices */
-	for ( int i = 0; i < GRAPH_MAX_VERTICES; i++ ) {
-		g->v[i].cell = CELL_EMPTY;
-		g->v[i].c.row = -1;
-		g->v[i].c.col = -1;
-		g->v[i].degree = 0;
-
-		for ( int k = 0; k < GRAPH_MAX_NEIGHBORS; k++ )
-			g->v[i].neighbors[k] = -1;
-	}
+	for ( int i = 0; i < GRAPH_MAX_VERTICES; i++ )
+		vertex_init (&g->v[i], -1, -1);
 
 	return 0;
 }
@@ -290,13 +312,7 @@ int create_vertice (Graph* g, Map* m, int i, int j, int* vertex_id) {
 	/* cria o vertice */
 	int id = g->num_vertices++;
 
-	g->v[id].cell = CELL_EMPTY;
-	g->v[id].c.row = i;
-	g->v[id].c.col = j;
-	g->v[id].degree = 0;
-
-	for ( int k = 0; k < GRAPH_MAX_NEIGHBORS; k++ )
-		g->v[id].neighbors[k] = -1;
+	vertex_init (&g->v[id], i / 3 + 1, j / 3 + 1);
 
 	/* marca na matriz (i,j) -> id */
 	m->vertices[i][j] = id;
@@ -360,9 +376,6 @@ int explorer (Graph* g, Map* m, int i, int j, int vertex_id) {
 	for ( int dir = 0; dir < 8; dir++ ) {
 		int r = i + dr[dir];
 		int c = j + dc[dir];
-
-		if ( vertex_id == 8 )
-			printf ("i: %d, j: %d, r: %d, c: %d, Data: %c, Edge: %c\n", i, j, r, c, m->data[r][c], edge[dir]);
 
 		/* checa se a primeira posicao na direcao contem o caractere da aresta */
 		if ( r < 0 || r >= m->rows || c < 0 || c >= m->cols )
@@ -441,10 +454,6 @@ int explorer (Graph* g, Map* m, int i, int j, int vertex_id) {
 			if ( m->data[r][c] != edge[dir] )
 				break;
 		}
-
-		if ( vertex_id == 8 ) {
-			printf ("Vertice id: %d, Direcao: %c (%d, %d), vizinho %d.\n", vertex_id, edge[dir], dr[dir], dc[dir], neighbor_id);
-		}
 	}
 
 	return 0;
@@ -520,8 +529,6 @@ int graph_create (Graph* g, const char* map_path) {
 					return status;
 				}
 			}
-
-			printf ("Vertice %d criado\n", vertex_id);
 		}
 	}
 

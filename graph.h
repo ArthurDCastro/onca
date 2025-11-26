@@ -11,14 +11,7 @@ typedef struct {
 	int col;
 } Coordinate;
 
-typedef enum {
-	CELL_EMPTY = 0,
-	CELL_DOG,
-	CELL_JAGUAR
-} CellContent;
-
 typedef struct {
-	CellContent cell;
 	Coordinate c;
 	int neighbors[GRAPH_MAX_NEIGHBORS]; /* IDs dos vizinhos */
 	int degree;							/* numero de vizinhos */
@@ -78,5 +71,7 @@ int graph_get_index (const Graph* g, int row, int col);
  * @return 1 se sao vizinhos, 0 se nao sao, <0 em caso de erro.
  */
 int graph_is_neighbor (const Graph* g, int a, int b);
+
+void print_graph (const Graph* g);
 
 #endif /* GRAPH_H */
