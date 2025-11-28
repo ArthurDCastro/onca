@@ -41,7 +41,6 @@ int main (void) {
 
 	printf ("Estado inicial carregado a partir do controlador.\n");
 
-	game_print_board (&game);
 	printf ("Digite jogadas no formato do controlador (ex: \"o m 4 3 5 3\")\n");
 	printf ("Linha vazia ou EOF encerra.\n\n");
 
@@ -76,7 +75,19 @@ int main (void) {
 		}
 
 		printf ("Round-trip: \"%s\" -> Move -> \"%s\"\n", line, out);
+		if ( game_is_legal_move (&game, &mv) )
+			game_apply_move (&game, &mv);
+		else
+			printf ("Movimento invalido: \"%s\" -> Move -> \"%s\"\n", line, out);
+
 		game_print_board (&game);
+
+		CellContent w = CELL_EMPTY;
+		if ( game_get_winner (&game, &w) ) {
+			if ( w == CELL_JAGUAR ) printf ("Onca venceu\n");
+			if ( w == CELL_DOG ) printf ("CAES venceram\n");
+			break;
+		}
 	}
 
 	printf ("Encerrando teste.\n");

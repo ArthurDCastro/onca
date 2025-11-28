@@ -1,13 +1,47 @@
-CFLAGS = -g -Wall -Wno-unused-result -O3
-LDLIBS = -l hiredis -l readline
+CC      = gcc
+CFLAGS  = -Wall -Wextra -std=c11 -g
 
-all: controlador exemplo1 exemplo2
+# Objetos comuns
+OBJS_COMMON    = graph.o game.o
 
-controlador: controlador.c
+# Executaveis
+PLAYER_OBJS    = $(OBJS_COMMON) player.o
+TEST_GAME_OBJS = $(OBJS_COMMON) test_game.o
+TEST_GRAPH_OBJS= graph.o test_graph.o
 
-exemplo1: tabuleiro.h tabuleiro.c exemplo1.c
+.PHONY: all clean
 
-exemplo2: tabuleiro.h tabuleiro.c exemplo2.c
+all: player test_game test_graph
+
+# ---- binarios ----
+
+player: $(PLAYER_OBJS)
+	$(CC) $(CFLAGS) -o $@ $(PLAYER_OBJS)
+
+test_game: $(TEST_GAME_OBJS)
+	$(CC) $(CFLAGS) -o $@ $(TEST_GAME_OBJS)
+
+test_graph: $(TEST_GRAPH_OBJS)
+	$(CC) $(CFLAGS) -o $@ $(TEST_GRAPH_OBJS)
+
+# ---- objetos ----
+
+graph.o: graph.c graph.h
+	$(CC) $(CFLAGS) -c graph.c
+
+game.o: game.c game.h graph.h
+	$(CC) $(CFLAGS) -c game.c
+
+player.o: player.c game.h graph.h
+	$(CC) $(CFLAGS) -c player.c
+
+test_game.o: test_game.c game.h graph.h
+	$(CC) $(CFLAGS) -c test_game.c
+
+test_graph.o: test_graph.c graph.h
+	$(CC) $(CFLAGS) -c test_graph.c
+
+# ---- util ----
 
 clean:
-	rm -f controlador exemplo1 exemplo2
+	rm -f *.o player test_game test_graph

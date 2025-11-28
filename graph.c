@@ -640,3 +640,32 @@ int graph_is_neighbor (const Graph* g, int a, int b) {
 
 	return 0; /* nao sao vizinhos */
 }
+
+int graph_get_neighbors (const Graph* g, int vid, int out_neighbors[], int* degree) {
+	if ( !g || !out_neighbors ) {
+		fprintf (stderr,
+				 "graph_get_neighbors: ponteiro nulo (g=%p, out_neighbors=%p)\n",
+				 (void*)g, (void*)out_neighbors);
+		return -1;
+	}
+
+	if ( vid < 0 || vid >= g->num_vertices ) {
+		fprintf (stderr,
+				 "graph_get_neighbors: vid fora do intervalo (%d)\n", vid);
+		return -2;
+	}
+
+	if ( GRAPH_MAX_NEIGHBORS < g->v[vid].degree ) {
+		fprintf (stderr,
+				 "graph_get_neighbors: max_neighbors menor que degree (%d < %d)\n",
+				 GRAPH_MAX_NEIGHBORS, g->v[vid].degree);
+		return -3;
+	}
+
+	*degree = g->v[vid].degree;
+
+	for ( int i = 0; i < g->v[vid].degree; i++ )
+		out_neighbors[i] = g->v[vid].neighbors[i];
+
+	return 0;
+}

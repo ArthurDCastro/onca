@@ -154,10 +154,7 @@ int game_apply_move (Game* game, const Move* mv);
  * @param out_count Numero de movimentos gerados.
  * @return 0 em sucesso, <0 em erro.
  */
-int game_generate_moves (const Game* game,
-						 Move moves[],
-						 int max_moves,
-						 int* out_count);
+int game_generate_moves (const Game* game, Move moves[], int max_moves, int* out_count);
 
 /**
  * @brief Verifica se ha vencedor.
@@ -206,5 +203,17 @@ int game_move_from_controller (const Game* game, const char* jogada, Move* mv);
 void game_print (const Game* game);
 
 void game_print_board (const Game* game);
+
+/**
+ * @brief Retorna o vertice intermediario entre dois vertices usados em salto.
+ *
+ * @param g        Ponteiro para o grafo.
+ * @param from_vid Indice do vertice de origem.
+ * @param to_vid   Indice do vertice de destino.
+ *
+ * @return Indice do vertice intermediario,
+ *         ou -1 se nao existir ou se nao for um salto valido.
+ */
+int graph_get_mid_jump (const Graph* g, int from_vid, int to_vid);
 
 #endif /* GAME_H */

@@ -352,3 +352,379 @@ int graph_is_valid_coord (const Graph* g, int row, int col) {
 
 	return 1;
 }
+
+int game_is_legal_move (const Game* g, const Move* mv) {
+	if ( !g || !mv ) {
+		fprintf (stderr,
+				 "game_is_legal_move: ponteiro nulo (g=%p, mv=%p)\n",
+				 (void*)g, (void*)mv);
+		return -1;
+	}
+
+	if ( mv->path_len < 2 ) {
+		/* caminho vazio ou grande demais */
+		return 0;
+	}
+
+	/* confere indices e origem */
+	for ( int k = 0; k < mv->path_len; k++ ) {
+		int vid = mv->path[k];
+		if ( vid < 0 || vid >= g->g.num_vertices )
+			return 0;
+	}
+
+	int from = mv->path[0];
+	int to = mv->path[1];
+	if ( g->cell_at[from] != mv->side ) {
+		/* origem nao contem peca do lado que joga */
+		return 0;
+	}
+
+	if ( from == to )
+		return 0;
+
+	/* --- movimentos dos caes --- */
+	if ( mv->side == CELL_DOG ) {
+		if ( mv->type != MOVE_SIMPLE )
+			return 0;
+
+		if ( !graph_is_neighbor (&g->g, from, to) )
+			return 0;
+
+		if ( g->cell_at[to] != CELL_EMPTY )
+			return 0;
+
+		return 1;
+	}
+
+	/* a partir daqui, estamos tratando a onca */
+
+	if ( mv->side != CELL_JAGUAR )
+		return 0;
+
+	/* movimento simples da onca */
+	if ( mv->type == MOVE_SIMPLE ) {
+		if ( !graph_is_neighbor (&g->g, from, to) )
+			return 0;
+
+		if ( g->cell_at[to] != CELL_EMPTY )
+			return 0;
+
+		return 1;
+	}
+
+	/* salto(s) da onca */
+	if ( mv->type == MOVE_JUMP ) {
+		/* posicao inicial deve bater com onde a onca esta */
+		if ( from != g->jaguar_pos )
+			return 0;
+
+		int current = from;
+
+		for ( int k = 0; k < mv->path_len - 1; k++ ) {
+			int to = mv->path[k + 1];
+			if ( current == to )
+				return 0;
+
+			int mid = graph_get_mid_jump (&g->g, current, to);
+			if ( mid < 0 )
+				return 0;
+
+			if ( !graph_is_neighbor (&g->g, from, mid) && !graph_is_neighbor (&g->g, mid, to) )
+				return 0;
+
+			/* casa intermediaria deve ter cao, destino deve estar vazio */
+			if ( g->cell_at[mid] != CELL_DOG )
+				return 0;
+			if ( g->cell_at[to] != CELL_EMPTY )
+				return 0;
+
+			/* opcional: garantir que from/to sao "saltaveis":
+			   voce pode adicionar checks extras de geometria aqui se quiser */
+
+			current = to;
+		}
+
+		return 1;
+	}
+
+	/* tipo desconhecido */
+	return 0;
+}
+
+int graph_get_mid_jump (const Graph* g, int from_vid, int to_vid) {
+	int lf = g->v[from_vid].c.row;
+	int cf = g->v[from_vid].c.col;
+
+	int lt = g->v[to_vid].c.row;
+	int ct = g->v[to_vid].c.col;
+
+	int lm = (lf + lt) / 2;
+	int cm = (cf + ct) / 2;
+
+	return graph_get_index (g, lm, cm);
+}
+
+static CellContent opposite_side (CellContent s) {
+	if ( s == CELL_JAGUAR ) return CELL_DOG;
+	if ( s == CELL_DOG ) return CELL_JAGUAR;
+	return s;
+}
+
+int game_apply_move (Game* game, const Move* mv) {
+	if ( !game || !mv ) {
+		fprintf (stderr,
+				 "game_apply_move: ponteiro nulo (game=%p, mv=%p)\n",
+				 (void*)game, (void*)mv);
+		return -1;
+	}
+
+	CellContent side = mv->side;
+
+	/* -------- movimento simples (um passo) -------- */
+	if ( mv->type == MOVE_SIMPLE ) {
+		int from = mv->path[0];
+		int to = mv->path[1];
+
+		/* aqui assumimos que indices sao validos e o movimento eh legal */
+
+		game->cell_at[from] = CELL_EMPTY;
+		game->cell_at[to] = side;
+
+		if ( side == CELL_JAGUAR )
+			game->jaguar_pos = to;
+
+		game->to_move = opposite_side (game->to_move);
+		return 0;
+	}
+
+	/* -------- salto(s) da onca -------- */
+	if ( mv->type == MOVE_JUMP ) {
+		/* assumimos que so a onca usa MOVE_JUMP e que path eh valido */
+		int current = mv->path[0];
+
+		for ( int k = 0; k < mv->path_len - 1; k++ ) {
+			int from = current;
+			int to = mv->path[k + 1];
+
+			int mid = graph_get_mid_jump (&game->g, from, to);
+
+			/* aplica o salto:
+			   - remove onca da origem
+			   - remove cao do meio
+			   - coloca onca no destino */
+			game->cell_at[from] = CELL_EMPTY;
+			game->cell_at[mid] = CELL_EMPTY;
+			game->cell_at[to] = CELL_JAGUAR;
+
+			game->num_dogs--;
+			current = to;
+		}
+
+		game->jaguar_pos = current;
+		game->to_move = opposite_side (game->to_move);
+		return 0;
+	}
+
+	fprintf (stderr,
+			 "game_apply_move: tipo de movimento desconhecido (%d)\n",
+			 mv->type);
+	return -5;
+}
+
+/* verifica se a onca tem algum movimento legal a partir do estado atual */
+static int game_jaguar_has_legal_move (const Game* g) {
+	if ( !g )
+		return 0;
+
+	int jpos = g->jaguar_pos;
+
+	if ( jpos < 0 || jpos >= g->g.num_vertices )
+		return 0;
+	if ( g->cell_at[jpos] != CELL_JAGUAR )
+		return 0;
+
+	int neigh[GRAPH_MAX_NEIGHBORS];
+	int deg = 0;
+	if ( graph_get_neighbors (&g->g, jpos, neigh, &deg) < 0 )
+		return 0;
+
+	Move mv;
+
+	mv.side = CELL_JAGUAR;
+	mv.path[0] = jpos;
+	mv.type = MOVE_SIMPLE;
+	mv.path_len = 2; /* simples ou 1 salto: origem + destino */
+
+	/* --- movimentos simples da onca --- */
+	for ( int i = 0; i < deg; i++ ) {
+		mv.path[1] = neigh[i];
+		if ( game_is_legal_move (g, &mv) == 1 )
+			return 1;
+	}
+
+	/* --- saltos: onca em jpos, cao em mid, destino vazio em dest --- */
+
+	int neigh_mid[GRAPH_MAX_NEIGHBORS];
+	int deg_mid = 0;
+	mv.type = MOVE_JUMP;
+
+	for ( int i = 0; i < deg; i++ ) {
+		int mid = neigh[i];
+
+		if ( g->cell_at[mid] != CELL_DOG )
+			continue;
+
+		if ( graph_get_neighbors (&g->g, mid, neigh_mid, &deg_mid) < 0 )
+			continue;
+
+		for ( int j = 0; j < deg_mid; j++ ) {
+			mv.path[1] = neigh_mid[j];
+
+			if ( game_is_legal_move (g, &mv) == 1 )
+				return 1;
+		}
+	}
+
+	return 0;
+}
+
+int game_get_winner (const Game* g, CellContent* winner) {
+	if ( !g || !winner ) {
+		fprintf (stderr,
+				 "game_get_winner: ponteiro nulo (g=%p, winner=%p)\n",
+				 (void*)g, (void*)winner);
+		return -1;
+	}
+
+	*winner = CELL_EMPTY;
+
+	/* regra da onca: ganha se restarem 9 ou menos caes */
+	if ( g->num_dogs <= 9 ) {
+		*winner = CELL_JAGUAR;
+		return 1;
+	}
+
+	/* se a onca nao tiver movimentos legais, caes vencem */
+	if ( !game_jaguar_has_legal_move (g) ) {
+		*winner = CELL_DOG;
+		return 1;
+	}
+
+	return 0; /* ninguem venceu ainda */
+}
+
+int game_generate_moves (const Game* game, Move moves[], int max_moves, int* out_count) {
+	if ( !game || !moves || !out_count ) {
+		fprintf (stderr,
+				 "game_generate_moves: ponteiro nulo (game=%p, moves=%p, out_count=%p)\n",
+				 (void*)game, (void*)moves, (void*)out_count);
+		return -1;
+	}
+
+	if ( max_moves <= 0 ) {
+		fprintf (stderr, "game_generate_moves: max_moves <= 0 (%d)\n", max_moves);
+		return -2;
+	}
+
+	*out_count = 0;
+
+	CellContent side = game->to_move;
+
+	/* ---------------- CÃES: apenas movimentos simples ---------------- */
+	if ( side == CELL_DOG ) {
+		for ( int vid = 0; vid < game->g.num_vertices; vid++ ) {
+			if ( game->cell_at[vid] != CELL_DOG )
+				continue;
+
+			int neigh[GRAPH_MAX_NEIGHBORS];
+			int deg = 0;
+
+			if ( graph_get_neighbors (&game->g, vid, neigh, &deg) != 0 )
+				continue;
+
+			for ( int i = 0; i < deg; i++ ) {
+				if ( *out_count >= max_moves )
+					return 0; /* truncado, mas sem erro */
+
+				Move mv;
+				mv.side = CELL_DOG;
+				mv.type = MOVE_SIMPLE;
+				mv.path_len = 2;
+				mv.path[0] = vid;
+				mv.path[1] = neigh[i];
+
+				if ( game_is_legal_move (game, &mv) == 1 )
+					moves[(*out_count)++] = mv;
+			}
+		}
+		return 0;
+	}
+
+	/* ---------------- ONÇA: movimentos simples + saltos ---------------- */
+
+	if ( side != CELL_JAGUAR ) {
+		/* lado desconhecido: nenhum movimento */
+		return 0;
+	}
+
+	int jpos = game->jaguar_pos;
+	if ( jpos < 0 || jpos >= game->g.num_vertices )
+		return 0;
+	if ( game->cell_at[jpos] != CELL_JAGUAR )
+		return 0;
+
+	int neigh[GRAPH_MAX_NEIGHBORS];
+	int deg = 0;
+
+	if ( graph_get_neighbors (&game->g, jpos, neigh, &deg) != 0 )
+		return 0;
+
+	/* --- movimentos simples da onça --- */
+	for ( int i = 0; i < deg; i++ ) {
+		if ( *out_count >= max_moves )
+			return 0;
+
+		Move mv;
+		mv.side = CELL_JAGUAR;
+		mv.type = MOVE_SIMPLE;
+		mv.path_len = 2;
+		mv.path[0] = jpos;
+		mv.path[1] = neigh[i];
+
+		if ( game_is_legal_move (game, &mv) == 1 )
+			moves[(*out_count)++] = mv;
+	}
+
+	/* --- saltos (apenas um salto por movimento, por enquanto) --- */
+
+	int neigh_mid[GRAPH_MAX_NEIGHBORS];
+	int deg_mid = 0;
+
+	for ( int i = 0; i < deg; i++ ) {
+		int mid = neigh[i];
+
+		if ( game->cell_at[mid] != CELL_DOG )
+			continue;
+
+		if ( graph_get_neighbors (&game->g, mid, neigh_mid, &deg_mid) != 0 )
+			continue;
+
+		for ( int j = 0; j < deg_mid; j++ ) {
+			if ( *out_count >= max_moves )
+				return 0;
+
+			Move mv;
+			mv.side = CELL_JAGUAR;
+			mv.type = MOVE_JUMP;
+			mv.path_len = 2;
+			mv.path[0] = jpos;
+			mv.path[1] = neigh_mid[j];
+
+			if ( game_is_legal_move (game, &mv) == 1 )
+				moves[(*out_count)++] = mv;
+		}
+	}
+
+	return 0;
+}

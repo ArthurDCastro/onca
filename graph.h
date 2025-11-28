@@ -72,6 +72,18 @@ int graph_get_index (const Graph* g, int row, int col);
  */
 int graph_is_neighbor (const Graph* g, int a, int b);
 
+/**
+ * @brief Copia os vizinhos de um vertice para um buffer externo.
+ *
+ * @param g            Ponteiro para o grafo.
+ * @param vid          Indice do vertice.
+ * @param out_neighbors Vetor de saida para receber os vizinhos.
+ * @param degree   Retorna a quantidade de vizinhos copiados.
+ *
+ * @return 0 em sucesso, <0 em erro.
+ */
+int graph_get_neighbors (const Graph* g, int vid, int out_neighbors[], int* degree);
+
 void print_graph (const Graph* g);
 
 #endif /* GRAPH_H */
