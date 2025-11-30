@@ -86,4 +86,13 @@ int graph_get_neighbors (const Graph* g, int vid, int out_neighbors[], int* degr
 
 void print_graph (const Graph* g);
 
+/**
+ * @brief Retorna o grau (numero de vizinhos) de um vertice.
+ *
+ * @param g Ponteiro para o grafo.
+ * @param vid Indice do vertice.
+ * @return Grau do vertice (>=0) em sucesso, <0 em erro.
+ */
+int graph_degree (const Graph* g, int vid);
+
 #endif /* GRAPH_H */

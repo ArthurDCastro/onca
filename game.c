@@ -341,7 +341,7 @@ void game_print_board (const Game* game) {
 	}
 }
 
-int graph_is_valid_coord (const Graph* g, int row, int col) {
+int graph_is_valid_coord (int row, int col) {
 	/* Mesmo criterio usado no controlador */
 	if ( row < 1 || row > 7 || col < 1 || col > 5 )
 		return 0;
@@ -353,14 +353,28 @@ int graph_is_valid_coord (const Graph* g, int row, int col) {
 	return 1;
 }
 
-int game_is_legal_move (const Game* g, const Move* mv) {
-	if ( !g || !mv ) {
-		fprintf (stderr,
-				 "game_is_legal_move: ponteiro nulo (g=%p, mv=%p)\n",
-				 (void*)g, (void*)mv);
-		return -1;
-	}
+static int game_is_straight_jump (const Game* g, int from, int mid, int to) {
+	int lf = g->g.v[from].c.row;
+	int cf = g->g.v[from].c.col;
 
+	int lm = g->g.v[mid].c.row;
+	int cm = g->g.v[mid].c.col;
+
+	int lt = g->g.v[to].c.row;
+	int ct = g->g.v[to].c.col;
+
+	int v1x = lm - lf;
+	int v1y = cm - cf;
+	int v2x = lt - lm;
+	int v2y = ct - cm;
+
+	/* produto vetorial em 2D = 0 => colinear */
+	int cross = v1x * v2y - v1y * v2x;
+
+	return (cross == 0);
+}
+
+int game_is_legal_move (const Game* g, const Move* mv) {
 	if ( mv->path_len < 2 ) {
 		/* caminho vazio ou grande demais */
 		return 0;
@@ -430,6 +444,9 @@ int game_is_legal_move (const Game* g, const Move* mv) {
 			if ( mid < 0 )
 				return 0;
 
+			if ( !game_is_straight_jump (g, from, mid, to) )
+				return 0;
+
 			if ( !graph_is_neighbor (&g->g, from, mid) && !graph_is_neighbor (&g->g, mid, to) )
 				return 0;
 
@@ -472,13 +489,6 @@ static CellContent opposite_side (CellContent s) {
 }
 
 int game_apply_move (Game* game, const Move* mv) {
-	if ( !game || !mv ) {
-		fprintf (stderr,
-				 "game_apply_move: ponteiro nulo (game=%p, mv=%p)\n",
-				 (void*)game, (void*)mv);
-		return -1;
-	}
-
 	CellContent side = mv->side;
 
 	/* -------- movimento simples (um passo) -------- */
@@ -534,9 +544,6 @@ int game_apply_move (Game* game, const Move* mv) {
 
 /* verifica se a onca tem algum movimento legal a partir do estado atual */
 static int game_jaguar_has_legal_move (const Game* g) {
-	if ( !g )
-		return 0;
-
 	int jpos = g->jaguar_pos;
 
 	if ( jpos < 0 || jpos >= g->g.num_vertices )
@@ -590,13 +597,6 @@ static int game_jaguar_has_legal_move (const Game* g) {
 }
 
 int game_get_winner (const Game* g, CellContent* winner) {
-	if ( !g || !winner ) {
-		fprintf (stderr,
-				 "game_get_winner: ponteiro nulo (g=%p, winner=%p)\n",
-				 (void*)g, (void*)winner);
-		return -1;
-	}
-
 	*winner = CELL_EMPTY;
 
 	/* regra da onca: ganha se restarem 9 ou menos caes */
@@ -615,18 +615,6 @@ int game_get_winner (const Game* g, CellContent* winner) {
 }
 
 int game_generate_moves (const Game* game, Move moves[], int max_moves, int* out_count) {
-	if ( !game || !moves || !out_count ) {
-		fprintf (stderr,
-				 "game_generate_moves: ponteiro nulo (game=%p, moves=%p, out_count=%p)\n",
-				 (void*)game, (void*)moves, (void*)out_count);
-		return -1;
-	}
-
-	if ( max_moves <= 0 ) {
-		fprintf (stderr, "game_generate_moves: max_moves <= 0 (%d)\n", max_moves);
-		return -2;
-	}
-
 	*out_count = 0;
 
 	CellContent side = game->to_move;
@@ -697,6 +685,7 @@ int game_generate_moves (const Game* game, Move moves[], int max_moves, int* out
 	}
 
 	/* --- saltos (apenas um salto por movimento, por enquanto) --- */
+	// TODO: implementar mutiplos saltos
 
 	int neigh_mid[GRAPH_MAX_NEIGHBORS];
 	int deg_mid = 0;

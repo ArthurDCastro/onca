@@ -25,11 +25,6 @@ typedef struct {
  * @return 0 em caso de sucesso, diferente de 0 em erro.
  */
 int vertex_init (Vertex* v, int row, int col) {
-	if ( !v ) {
-		fprintf (stderr, "vertex_init: ponteiro v == NULL\n");
-		return -1;
-	}
-
 	v->c.row = row;
 	v->c.col = col;
 	v->degree = 0;
@@ -52,11 +47,6 @@ int vertex_init (Vertex* v, int row, int col) {
  */
 
 int graph_init (Graph* g, int n) {
-	if ( !g ) {
-		fprintf (stderr, "graph_init: ponteiro g == NULL\n");
-		return -1;
-	}
-
 	if ( n <= 0 || n > GRAPH_MAX_VERTICES ) {
 		fprintf (stderr,
 				 "graph_init: valor n (%d) invalido, deve estar entre 1 e %d\n",
@@ -250,11 +240,6 @@ int destroy_map (Map* m) {
  * @return 1 se for um vertice, 0 caso contrario.
  */
 int is_vertice (const Map* m, int i, int j) {
-	if ( !m ) {
-		fprintf (stderr, "is_vertice: ponteiro m == NULL\n");
-		return 0;
-	}
-
 	/* checa limites da matriz */
 	if ( i < 0 || i >= m->rows || j < 0 || j >= m->cols ) {
 		fprintf (stderr, "is_vertice: indices fora dos limites (i=%d, j=%d)\n", i, j);
@@ -565,16 +550,6 @@ void print_graph (const Graph* g) {
 }
 
 int graph_get_coord (const Graph* g, int vertex_id, int* row, int* col) {
-	if ( !g ) {
-		fprintf (stderr, "graph_get_coord: ponteiro g == NULL\n");
-		return -1;
-	}
-
-	if ( !row || !col ) {
-		fprintf (stderr, "graph_get_coord: ponteiro row/col == NULL\n");
-		return -2;
-	}
-
 	if ( vertex_id < 0 || vertex_id >= g->num_vertices ) {
 		fprintf (stderr,
 				 "graph_get_coord: vertex_id (%d) fora do intervalo [0, %d)\n",
@@ -591,18 +566,6 @@ int graph_get_coord (const Graph* g, int vertex_id, int* row, int* col) {
 }
 
 int graph_get_index (const Graph* g, int row, int col) {
-	if ( !g ) {
-		fprintf (stderr, "graph_get_index: ponteiro g == NULL\n");
-		return -1;
-	}
-
-	if ( row < 0 || col < 0 ) {
-		fprintf (stderr,
-				 "graph_get_index: coordenadas negativas (row=%d, col=%d)\n",
-				 row, col);
-		return -2;
-	}
-
 	/* busca linear nos vertices */
 	for ( int v = 0; v < g->num_vertices; v++ ) {
 		if ( g->v[v].c.row == row &&
@@ -616,11 +579,6 @@ int graph_get_index (const Graph* g, int row, int col) {
 }
 
 int graph_is_neighbor (const Graph* g, int a, int b) {
-	if ( !g ) {
-		fprintf (stderr, "graph_is_neighbor: ponteiro g == NULL\n");
-		return -1;
-	}
-
 	if ( a < 0 || a >= g->num_vertices ||
 		 b < 0 || b >= g->num_vertices ) {
 		fprintf (stderr,
@@ -642,19 +600,6 @@ int graph_is_neighbor (const Graph* g, int a, int b) {
 }
 
 int graph_get_neighbors (const Graph* g, int vid, int out_neighbors[], int* degree) {
-	if ( !g || !out_neighbors ) {
-		fprintf (stderr,
-				 "graph_get_neighbors: ponteiro nulo (g=%p, out_neighbors=%p)\n",
-				 (void*)g, (void*)out_neighbors);
-		return -1;
-	}
-
-	if ( vid < 0 || vid >= g->num_vertices ) {
-		fprintf (stderr,
-				 "graph_get_neighbors: vid fora do intervalo (%d)\n", vid);
-		return -2;
-	}
-
 	if ( GRAPH_MAX_NEIGHBORS < g->v[vid].degree ) {
 		fprintf (stderr,
 				 "graph_get_neighbors: max_neighbors menor que degree (%d < %d)\n",
@@ -668,4 +613,15 @@ int graph_get_neighbors (const Graph* g, int vid, int out_neighbors[], int* degr
 		out_neighbors[i] = g->v[vid].neighbors[i];
 
 	return 0;
+}
+
+int graph_degree (const Graph* g, int vid) {
+	if ( vid < 0 || vid >= g->num_vertices ) {
+		fprintf (stderr,
+				 "graph_degree: vid fora do intervalo (vid=%d, num_vertices=%d)\n",
+				 vid, g->num_vertices);
+		return -2;
+	}
+
+	return g->v[vid].degree;
 }

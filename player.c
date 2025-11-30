@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
+#include "ai.h"
 #include "game.h"
 
 #define MAX_MOVES 128
@@ -17,29 +19,6 @@
 /* escolha quem eh humano e quem eh agente */
 #define HUMAN_SIDE CELL_DOG
 #define AGENT_SIDE CELL_JAGUAR
-
-/**
- * @brief Escolhe um movimento para o agente.
- *
- * Por enquanto: pega o primeiro movimento legal gerado.
- * Depois trocamos por minimax/alpha-beta.
- */
-static int agent_choose_move (const Game* game, Move* out_mv) {
-	Move moves[MAX_MOVES];
-	int count = 0;
-
-	if ( game_generate_moves (game, moves, MAX_MOVES, &count) != 0 ) {
-		fprintf (stderr, "agent_choose_move: game_generate_moves falhou\n");
-		return -1;
-	}
-
-	if ( count <= 0 ) {
-		return 1; /* sem movimentos */
-	}
-
-	*out_mv = moves[0];
-	return 0;
-}
 
 /**
  * @brief Le uma linha do stdin e converte para Move (formato controlador).
@@ -73,6 +52,9 @@ static int human_read_move (const Game* game, Move* mv) {
 
 int main (void) {
 	Game game;
+
+	AiConfig ai;
+	ai.max_depth = 7;
 	int err;
 
 	if ( (err = game_init (&game)) != 0 ) {
@@ -122,46 +104,35 @@ int main (void) {
 
 		game_print_board (&game);
 
+		ai.side = game.to_move;
+
 		if ( game.to_move == HUMAN_SIDE ) {
-			printf ("Sua vez (%c).\n", CTRL_DOG_CHAR);
-			Move mv;
-			int hr = human_read_move (&game, &mv);
-			if ( hr == 1 ) { /* linha vazia */
-				printf ("Encerrando por entrada vazia.\n");
-				break;
-			}
-			if ( hr != 0 )
-				continue; /* erro na jogada, pede de novo */
-
-			if ( game_apply_move (&game, &mv) != 0 ) {
-				fprintf (stderr, "player: game_apply_move falhou (humano)\n");
-				break;
-			}
+			printf ("Vez do %c...\n", CTRL_DOG_CHAR);
 		} else if ( game.to_move == AGENT_SIDE ) {
-			printf ("Vez do agente (%c)...\n", CTRL_JAGUAR_CHAR);
-
-			Move best;
-			int ar = agent_choose_move (&game, &best);
-			if ( ar != 0 ) {
-				printf ("Agente nao encontrou movimentos. Fim.\n");
-				break;
-			}
-
-			char buf[128];
-			if ( game_move_to_controller (&game, &best, buf, (int)sizeof buf) != 0 ) {
-				fprintf (stderr,
-						 "player: game_move_to_controller falhou (agente)\n");
-				break;
-			}
-
-			printf ("Agente joga: %s\n", buf);
-
-			if ( game_apply_move (&game, &best) != 0 ) {
-				fprintf (stderr, "player: game_apply_move falhou (agente)\n");
-				break;
-			}
+			printf ("Vez do %c...\n", CTRL_JAGUAR_CHAR);
 		} else {
 			fprintf (stderr, "player: to_move desconhecido (%d)\n", game.to_move);
+			break;
+		}
+
+		Move best;
+		int ar = ai_choose_move (&game, &ai, &best);
+		if ( ar != 0 ) {
+			printf ("Agente nao encontrou movimentos. Fim.\n");
+			break;
+		}
+
+		char buf[128];
+		if ( game_move_to_controller (&game, &best, buf, (int)sizeof buf) != 0 ) {
+			fprintf (stderr,
+					 "player: game_move_to_controller falhou (agente)\n");
+			break;
+		}
+
+		printf ("Agente joga: %s\n", buf);
+
+		if ( game_apply_move (&game, &best) != 0 ) {
+			fprintf (stderr, "player: game_apply_move falhou (agente)\n");
 			break;
 		}
 	}

@@ -3,12 +3,16 @@
 
 #include "game.h"
 
+#define AI_MAX_MOVES 128
+#define AI_WIN_SCORE 10000
+#define AI_LOSE_SCORE -10000
+
 /**
  * @brief Configuracao da IA.
  */
 typedef struct {
 	int max_depth;	  /* profundidade maxima da busca */
-	CellContent side; /* lado para o qual avaliamos (normalmente CELL_JAGUAR) */
+	CellContent side; /* lado para o qual avaliamos */
 } AiConfig;
 
 /**
@@ -30,11 +34,7 @@ int ai_evaluate (const Game* game, CellContent side);
  * @param out_score Saida com o valor da posicao.
  * @return 0 em sucesso, <0 em erro.
  */
-int ai_minimax (const Game* game,
-				int depth,
-				int maximizing,
-				const AiConfig* cfg,
-				int* out_score);
+int ai_minimax (const Game* game, int depth, int maximizing, const AiConfig* cfg, int* out_score);
 
 /**
  * @brief Busca adversaria com algoritmo MINIMAX e poda alfa-beta.
@@ -48,13 +48,7 @@ int ai_minimax (const Game* game,
  * @param out_score Saida com o valor da posicao.
  * @return 0 em sucesso, <0 em erro.
  */
-int ai_alphabeta (const Game* game,
-				  int depth,
-				  int alpha,
-				  int beta,
-				  int maximizing,
-				  const AiConfig* cfg,
-				  int* out_score);
+int ai_alphabeta (const Game* game, int depth, int alpha, int beta, int maximizing, const AiConfig* cfg, int* out_score);
 
 /**
  * @brief Escolhe a melhor acao para o lado em game->to_move.
@@ -66,8 +60,6 @@ int ai_alphabeta (const Game* game,
  * @param best_move Saida com o melhor movimento encontrado.
  * @return 0 em sucesso, >0 se nao ha movimentos, <0 em erro.
  */
-int ai_choose_move (const Game* game,
-					const AiConfig* cfg,
-					Move* best_move);
+int ai_choose_move (const Game* game, const AiConfig* cfg, Move* best_move);
 
 #endif /* AI_H */

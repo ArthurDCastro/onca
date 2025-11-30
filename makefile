@@ -2,7 +2,7 @@ CC      = gcc
 CFLAGS  = -Wall -Wextra -std=c11 -g
 
 # Objetos comuns
-OBJS_COMMON    = graph.o game.o
+OBJS_COMMON    = graph.o game.o ai.o
 
 # Executaveis
 PLAYER_OBJS    = $(OBJS_COMMON) player.o
@@ -31,6 +31,9 @@ graph.o: graph.c graph.h
 
 game.o: game.c game.h graph.h
 	$(CC) $(CFLAGS) -c game.c
+
+ai.o: ai.c ai.h
+	$(CC) $(CFLAGS) -c ai.c
 
 player.o: player.c game.h graph.h
 	$(CC) $(CFLAGS) -c player.c
