@@ -10,7 +10,7 @@
 #define REDIS_IP "127.0.0.1"
 #define REDIS_PORT 10001
 #define MAX_BUFFER_SIZE 512
-#define AI_DEFAULT_DEPTH 7
+#define AI_DEFAULT_DEPTH 6
 
 // As definições de caracteres do controlador devem ser as mesmas usadas em game.c/player.c
 #ifndef CTRL_JAGUAR_CHAR
@@ -81,7 +81,7 @@ static int read_game_state(redisContext* c, char side, const char* timeout,
     
     char *tabuleiro_start = out_full_state;
     
-    // 1. Obtém o lado a jogar (1ª linha)
+    // Obtem o lado do jogo
     // Usamos o strchr para encontrar o primeiro '\n'
     char *separator1 = strchr(tabuleiro_start, '\n'); 
     if (separator1 == NULL) {
@@ -92,7 +92,7 @@ static int read_game_state(redisContext* c, char side, const char* timeout,
     // Copia o primeiro caractere (o lado)
     *out_lado_a_jogar = tabuleiro_start[0];
     
-    // 2. Procura o início da terceira linha (o tabuleiro)
+    // Procura o início da terceira linha (o tabuleiro)
     // O tabuleiro começa após o segundo '\n'.
     
     // Começa a busca após o primeiro separador
@@ -105,18 +105,17 @@ static int read_game_state(redisContext* c, char side, const char* timeout,
     // O início do tabuleiro é o caractere imediatamente após o segundo '\n'
     tabuleiro_start = separator2 + 1;
 
-    // 3. Verifica se o buffer de destino tem espaço (segurança básica)
+    // Verifica se o buffer de destino tem espaço (segurança básica)
     if (strlen(tabuleiro_start) >= MAX_BUFFER_SIZE) {
          fprintf(stderr, "Formato do estado inválido (Tab. muito grande).\n");
          return -1;
     }
 
-    // 4. Copia o restante da string para o out_tabuleiro
+    // Copia o restante da string para o out_tabuleiro
     strcpy(out_tabuleiro, tabuleiro_start);
     
     // Opcional: Para depuração, termina a string do lado a jogar.
     *separator1 = '\0';
-    // O lado já foi capturado, então podemos parar aqui.
 
     return 0;
 }
@@ -143,19 +142,11 @@ static int send_move(redisContext* c, char side, const char* move_str) {
     }
 
     if (reply->type == REDIS_REPLY_ERROR) {
-        // A resposta do Redis indica um erro (o erro está na própria resposta, na string)
+        // A resposta do Redis indica um erro
         fprintf(stderr, "Erro do servidor Redis: %s\n", reply->str);
         freeReplyObject(reply);
         return -1;
     }
-
-    // Código original:
-    // if (reply == NULL || reply->type == REDIS_REPLY_ERROR) {
-    //     fprintf(stderr, "Erro ao enviar a jogada para o Redis: %s\n", (reply ? reply->errstr : "Comunicação falhou"));
-    //     if (reply) freerReplyObject(reply);
-    //     return -1;
-    // }
-
     freeReplyObject(reply);
     return 0;
 }
@@ -181,8 +172,8 @@ int main (int argc, char **argv) {
         }
     }
 
-    // O timeout será lido do controlador original, mas aqui usaremos um valor fixo alto para BLPOP
-    const char* blpop_timeout = "600"; // 10 minutos (tempo suficiente para o controlador enviar o tabuleiro)
+    // O timeout será lido do controlador original,
+    const char* blpop_timeout = "180"; // 10 minutos (tempo suficiente para o controlador enviar o tabuleiro)
 
     Game game;
     AiConfig ai_cfg;
@@ -205,29 +196,29 @@ int main (int argc, char **argv) {
         char board_buffer[MAX_BUFFER_SIZE];
         char lado_a_jogar_char = ' ';
 
-        // 1. Ler o estado do Redis (BLPOP)
+        //Ler o estado do Redis (BLPOP)
         if (read_game_state(c, ia_side_char, blpop_timeout,
                             full_state_buffer, &lado_a_jogar_char, board_buffer) != 0) {
             printf("Fim do jogo ou erro na leitura do estado. Encerrando.\n");
             break;
         }
 
-        // 2. Verificar se é a vez da IA (o controlador enviará o tabuleiro do seu lado)
+        // Verificar se é sua vez (o controlador enviará o tabuleiro do seu lado)
         if (lado_a_jogar_char != ia_side_char) {
             fprintf(stderr, "Erro de sincronização: o controlador espera a jogada de '%c', mas é a vez de '%c' no loop de leitura da IA.\n", lado_a_jogar_char, ia_side_char);
-            // Isso pode indicar o fim do jogo ou um erro de lógica do controlador.
+            //  pode indicar o fim do jogo ou um erro de lógica do controlador.
             continue;
         }
         
         printf("\nTurno da IA (%c). Estado recebido:\n%s", ia_side_char, board_buffer);
 
-        // 3. Converter a string do tabuleiro para a estrutura Game
+        // Converter a string do tabuleiro para a estrutura Game
         if (game_from_controller_board(&game, board_buffer, lado_a_jogar_char) != 0) {
             fprintf(stderr, "Falha ao carregar o estado do tabuleiro.\n");
             break;
         }
 
-        // 4. Testar o estado terminal antes de calcular a jogada
+        // Testar o estado terminal antes de calcular a jogada
         CellContent winner;
         if (game_get_winner(&game, &winner) == 1) {
             printf("Jogo terminado (vencedor: %c). Não farei jogada.\n", (winner == CELL_JAGUAR) ? CTRL_JAGUAR_CHAR : CTRL_DOG_CHAR);
@@ -240,14 +231,14 @@ int main (int argc, char **argv) {
             break;
         }
 
-        // 5. Calcular a melhor jogada
+        // Calcular a melhor jogada
         Move best_move;
         int ar = ai_choose_move(&game, &ai_cfg, &best_move);
 
         char move_buffer[MAX_BUFFER_SIZE];
         if (ar != 0) {
             if (ar == 1) {
-                // Sem movimentos possíveis (derrota ou empate)
+                // Sem movimentos (derrota ou empate)
                 printf("Agente (%c) não encontrou movimentos legais. Enviando jogada nula.\n", ia_side_char);
                 sprintf(move_buffer, "%c n", ia_side_char);
             } else {
@@ -255,7 +246,7 @@ int main (int argc, char **argv) {
                 sprintf(move_buffer, "%c n", ia_side_char); // Envia nulo para não bloquear
             }
         } else {
-            // 6. Formatar a jogada para o controlador
+            //Formatar a jogada para o controlador
             if (game_move_to_controller(&game, &best_move, move_buffer, (int)sizeof move_buffer) != 0) {
                 fprintf(stderr, "Falha ao formatar a jogada para o controlador.\n");
                 sprintf(move_buffer, "%c n", ia_side_char);
@@ -264,7 +255,7 @@ int main (int argc, char **argv) {
 
         printf("Agente (%c) jogada calculada: %s\n", ia_side_char, move_buffer);
 
-        // 7. Enviar a jogada para o Redis
+        // Enviar a jogada para o Redis
         if (send_move(c, ia_side_char, move_buffer) != 0) {
             fprintf(stderr, "Falha ao enviar a jogada. Encerrando.\n");
             break;
