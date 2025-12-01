@@ -6,19 +6,16 @@ LDLIBS = -l hiredis -l readline
 OBJS_COMMON    = graph.o game.o ai.o
 
 # Executaveis
-# Atualizado para usar o novo objeto ai_controller.o
 PLAYER_OBJS    = $(OBJS_COMMON) ai_controller.o
 TEST_GAME_OBJS = $(OBJS_COMMON) test_game.o
 TEST_GRAPH_OBJS= graph.o test_graph.o
 
 .PHONY: all clean
 
-# Adicionado 'controlador' à lista 'all'
 all:  ai_player test_game test_graph
 
 # ---- binarios ----
 
-# O alvo ai_player agora vincula os objetos definidos em PLAYER_OBJS
 ai_player: $(PLAYER_OBJS)
 	$(CC) $(CFLAGS) -o $@ $(PLAYER_OBJS) $(LDLIBS)
 
@@ -39,11 +36,9 @@ game.o: game.c game.h graph.h
 ai.o: ai.c ai.h
 	$(CC) $(CFLAGS) -c ai.c
 
-# Regra para o novo arquivo main do player
 ai_controller.o: ai_controller.c game.h graph.h
 	$(CC) $(CFLAGS) -c ai_controller.c
 
-# A regra original ai_player.o (que usava player.c) foi substituída.
 
 test_game.o: test_game.c game.h graph.h
 	$(CC) $(CFLAGS) -c test_game.c

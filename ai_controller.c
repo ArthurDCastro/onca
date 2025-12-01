@@ -42,7 +42,7 @@ static redisContext* connect_redis() {
 /**
  * @brief Lê o estado do jogo do Redis, na chave tabuleiro_<lado>.
  * @param c Contexto Redis.
- * @param side O lado da IA ('o' ou 'c').
+ * @param side O lado ('o' ou 'c').
  * @param timeout Tempo limite de bloqueio (em segundos).
  * @param out_full_state Buffer para a string completa do estado.
  * @param out_lado_a_jogar Char para o lado que o controlador espera que jogue.
@@ -54,8 +54,6 @@ static int read_game_state(redisContext* c, char side, const char* timeout,
     redisReply* reply;
     char key[32];
     sprintf(key, "tabuleiro_%c", side);
-
-    // BLPOP
     reply = redisCommand(c, "BLPOP %s %s", key, timeout);
 
     if (reply == NULL) {
@@ -173,7 +171,7 @@ int main (int argc, char **argv) {
     }
 
     // O timeout será lido do controlador original,
-    const char* blpop_timeout = "180"; // 10 minutos (tempo suficiente para o controlador enviar o tabuleiro)
+    const char* blpop_timeout = "180"; // 3 min
 
     Game game;
     AiConfig ai_cfg;
@@ -223,8 +221,6 @@ int main (int argc, char **argv) {
         if (game_get_winner(&game, &winner) == 1) {
             printf("Jogo terminado (vencedor: %c). Não farei jogada.\n", (winner == CELL_JAGUAR) ? CTRL_JAGUAR_CHAR : CTRL_DOG_CHAR);
             
-            // Enviamos uma jogada nula para o outro lado (no caso do controlador original,
-            // ele fará isso, mas para ser robusto, podemos garantir que não bloqueamos)
             char no_move_buf[32];
             sprintf(no_move_buf, "%c n", ia_side_char);
             send_move(c, ia_side_char, no_move_buf);
